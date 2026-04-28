@@ -1,4 +1,342 @@
-const records = [
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表演生查詢系統</title>
+    <style>
+        /* =========================================
+           基本設定與色彩變數
+        ========================================= */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --border-color: #ddd;
+            --highlight: #e8f4f8;
+            --accent: #e67e22;
+            --next-item-color: #e67e22;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "PingFang HK", "Microsoft JhengHei", "Helvetica Neue", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+
+        /* =========================================
+           頁籤 (Tabs) 設計
+        ========================================= */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 2px solid var(--primary);
+            background-color: white;
+            color: var(--primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* =========================================
+           控制區與概覽區
+        ========================================= */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .btn-reset {
+            padding: 12px 20px;
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 節目概覽區塊 */
+        .perf-summary {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--accent);
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .perf-summary.active {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .summary-item {
+            font-size: 16px;
+        }
+
+        .summary-label {
+            font-weight: bold;
+            color: #7f8c8d;
+            margin-right: 8px;
+        }
+
+        .summary-value {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+            background: white;
+            border-radius: 8px;
+            border: 1px dashed #bdc3c7;
+        }
+
+        /* =========================================
+           佈局
+        ========================================= */
+        .perf-layout {
+            display: block; 
+            width: 100%;
+        }
+
+        .perf-container {
+            width: 100%;
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+
+        /* =========================================
+           表格設計
+        ========================================= */
+        .rwd-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            min-width: 850px; 
+        }
+
+        .rwd-table thead tr {
+            background-color: var(--primary);
+            color: white;
+            text-align: left;
+        }
+
+        .rwd-table th, .rwd-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .rwd-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .rwd-table tbody tr:hover {
+            background-color: var(--highlight);
+        }
+
+        .next-perf-text {
+            color: var(--next-item-color);
+            font-size: 12px;
+            font-weight: bold;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* 調整欄位比例 */
+        .col-class { width: 70px; }
+        .col-no { width: 60px; }
+        .col-name { width: 120px; font-weight: bold; }
+        .col-rehearsal { width: auto; min-width: 160px; }
+        .col-show { width: auto; min-width: 160px; }
+        .col-next { width: auto; min-width: 200px; }
+
+        /* =========================================
+           學生詳情樣式
+        ========================================= */
+        .student-header {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .activity-card {
+            background: #f9fbfb;
+            border: 1px solid #e1e8ed;
+            border-left: 4px solid var(--secondary);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .activity-title { font-weight: bold; font-size: 15px; margin-bottom: 8px; color: var(--primary); }
+        .activity-info { font-size: 14px; color: #555; margin-bottom: 4px; }
+
+        /* =========================================
+           學生搜尋結果卡片
+        ========================================= */
+        .student-result-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            cursor: pointer;
+        }
+        .student-result-info { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-weight: bold; 
+        }
+        .student-expanded-detail { 
+            display: none; 
+            margin-top: 15px; 
+            border-top: 1px dashed #ccc; 
+            padding-top: 10px; 
+        }
+
+        /* Modal (彈窗) */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { 
+            background: white; width: 100%; max-width: 600px; max-height: 85vh; 
+            border-radius: 12px; padding: 25px; position: relative; overflow-y: auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-close { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #888; }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            .rwd-table { min-width: 750px; }
+            .rwd-table th, .rwd-table td { padding: 10px 8px; font-size: 13px; }
+            .modal-content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎭 表演生查詢系統</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-performance')" id="btn-performance">依表演項目查詢</button>
+        <button class="tab-btn" onclick="switchTab('tab-student')" id="btn-student">依學生查詢</button>
+    </div>
+
+    <!-- 標籤一：依表演項目 -->
+    <div id="tab-performance" class="tab-content active">
+        <div class="controls">
+            <select id="activity-select" class="control-input" onchange="renderPerformanceStudents()">
+                <option value="">-- 請選擇表演項目 --</option>
+            </select>
+            <button class="btn-reset" onclick="resetPerformance()">重設</button>
+        </div>
+
+        <div id="perf-summary-box" class="perf-summary">
+            <div class="summary-item"><span class="summary-label">節目：</span><span class="summary-value" id="summary-name">-</span></div>
+            <div class="summary-item"><span class="summary-label">👥 表演人數：</span><span class="summary-value" id="summary-count">-</span></div>
+            <div class="summary-item"><span class="summary-label">📍 預備室：</span><span class="summary-value" id="summary-room">-</span></div>
+            <div class="summary-item"><span class="summary-label">👕 服飾：</span><span class="summary-value" id="summary-costume">-</span></div>
+        </div>
+
+        <div class="perf-layout">
+            <div class="perf-container" id="perf-list-container">
+                <div class="empty-state">請選擇上方表演項目以查看名單。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 標籤二：依學生 -->
+    <div id="tab-student" class="tab-content">
+        <div class="controls">
+            <input type="text" id="search-class" class="control-input" placeholder="班別 (如: 1A)" oninput="handleStudentSearch()">
+            <input type="text" id="search-name-no" class="control-input" placeholder="姓名或班號 (如: 陳小明 / 21)" oninput="handleStudentSearch()">
+            <button class="btn-reset" onclick="resetStudentSearch()">重設</button>
+        </div>
+        <div id="student-search-results">
+            <div class="empty-state">請輸入搜尋條件。</div>
+        </div>
+    </div>
+
+    <!-- 統一詳情彈窗 -->
+    <div id="global-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modal-detail-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // 數據模型
+        const records = [
     {"class":"1A","no":"1","name":"陳諾鋒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
     {"class":"1A","no":"2","name":"陳天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
     {"class":"1A","no":"3","name":"張曉晴","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
@@ -564,3 +902,185 @@ const records = [
     {"class":"6D","no":"21","name":"黃家瀅","activity":"合唱團","order":"5","room":"310室","costume":"合唱團團服","rehearsalDismissal":"自行回家","showDismissal":"自行回家"},
     {"class":"6D","no":"21","name":"黃家瀅","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"自行回家","showDismissal":"自行回家"}
 ];
+
+        const byPerformance = {};
+        const byStudent = {};
+        const uniquePerformances = [];
+
+        function initData() {
+            records.forEach(rec => {
+                const perfKey = `${rec.order}|${rec.activity}`;
+                if (!byPerformance[perfKey]) {
+                    byPerformance[perfKey] = [];
+                    uniquePerformances.push({ key: perfKey, order: rec.order, name: rec.activity, room: rec.room, costume: rec.costume });
+                }
+                byPerformance[perfKey].push(rec);
+
+                const studentKey = `${rec.class}-${rec.no}`;
+                if (!byStudent[studentKey]) {
+                    byStudent[studentKey] = { class: rec.class, no: rec.no, name: rec.name, records: [] };
+                }
+                byStudent[studentKey].records.push(rec);
+            });
+
+            // 學生紀錄按次序排序
+            Object.values(byStudent).forEach(student => {
+                student.records.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            });
+
+            // 項目清單按次序排序
+            uniquePerformances.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            const select = document.getElementById('activity-select');
+            uniquePerformances.forEach(perf => {
+                const opt = document.createElement('option');
+                opt.value = perf.key;
+                opt.textContent = `[${perf.order}] ${perf.name}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById(id === 'tab-performance' ? 'btn-performance' : 'btn-student').classList.add('active');
+        }
+
+        function buildActivitiesOnlyHTML(studentKey) {
+            const student = byStudent[studentKey];
+            if (!student) return '';
+            let html = '';
+            student.records.forEach(rec => {
+                html += `
+                <div class="activity-card">
+                    <div class="activity-title">節目 ${rec.order}: ${rec.activity}</div>
+                    <div class="activity-info">📍 預備室: ${rec.room}</div>
+                    <div class="activity-info">👕 服飾: ${rec.costume}</div>
+                    <div class="activity-info">📅 綵排放學: ${rec.rehearsalDismissal}</div>
+                    <div class="activity-info">🎬 表演放學: ${rec.showDismissal}</div>
+                </div>`;
+            });
+            return html;
+        }
+
+        function buildFullDetailHTML(studentKey) {
+            const student = byStudent[studentKey];
+            if (!student) return '';
+            return `<div class="student-header">${student.class} (${student.no}) ${student.name}</div>` + buildActivitiesOnlyHTML(studentKey);
+        }
+
+        function renderPerformanceStudents() {
+            const key = document.getElementById('activity-select').value;
+            const listContainer = document.getElementById('perf-list-container');
+            const summaryBox = document.getElementById('perf-summary-box');
+            
+            if (!key) {
+                summaryBox.classList.remove('active');
+                listContainer.innerHTML = '<div class="empty-state">請選擇上方表演項目以查看名單。</div>';
+                return;
+            }
+
+            const students = byPerformance[key];
+            const info = uniquePerformances.find(p => p.key === key);
+            const currentOrder = parseInt(info.order);
+
+            document.getElementById('summary-name').textContent = info.name;
+            document.getElementById('summary-count').textContent = `${students.length} 人`;
+            document.getElementById('summary-room').textContent = info.room;
+            document.getElementById('summary-costume').textContent = info.costume;
+            summaryBox.classList.add('active');
+
+            let html = `
+            <table class="rwd-table">
+                <thead>
+                    <tr>
+                        <th class="col-class">班別</th>
+                        <th class="col-no">班號</th>
+                        <th class="col-name">姓名</th>
+                        <th class="col-next">下一個表演</th>
+                        <th class="col-rehearsal">綵排放學</th>
+                        <th class="col-show">表演放學</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            students.forEach(s => {
+                const sk = `${s.class}-${s.no}`;
+                const studentData = byStudent[sk];
+                
+                // 尋找下一個表演項目
+                let nextPerfText = "---";
+                if (studentData) {
+                    const nextPerf = studentData.records.find(r => parseInt(r.order) > currentOrder);
+                    if (nextPerf) {
+                        nextPerfText = `<span class="next-perf-text">節目 ${nextPerf.order}: ${nextPerf.activity}</span>`;
+                    }
+                }
+
+                html += `
+                <tr onclick="showStudentModal('${sk}')">
+                    <td>${s.class}</td>
+                    <td>${s.no}</td>
+                    <td>${s.name}</td>
+                    <td>${nextPerfText}</td>
+                    <td>${s.rehearsalDismissal}</td>
+                    <td>${s.showDismissal}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            listContainer.innerHTML = html;
+        }
+
+        function showStudentModal(key) {
+            const html = buildFullDetailHTML(key);
+            document.getElementById('modal-detail-container').innerHTML = html;
+            document.getElementById('global-modal').style.display = 'flex';
+        }
+
+        function handleStudentSearch() {
+            const qC = document.getElementById('search-class').value.toLowerCase().trim();
+            const qN = document.getElementById('search-name-no').value.toLowerCase().trim();
+            const container = document.getElementById('student-search-results');
+            
+            if (!qC && !qN) {
+                container.innerHTML = '<div class="empty-state">請輸入搜尋條件。</div>';
+                return;
+            }
+
+            const filtered = Object.values(byStudent).filter(s => {
+                const matchC = qC ? s.class.toLowerCase().includes(qC) : true;
+                const matchN = qN ? (s.name.includes(qN) || s.no === qN) : true;
+                return matchC && matchN;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state">找不到學生。</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'student-result-card';
+                card.innerHTML = `
+                    <div class="student-result-info">
+                        <span>${s.class} (${s.no}) ${s.name}</span>
+                        <span style="color:var(--secondary)">${s.records.length} 項表演 ▾</span>
+                    </div>
+                    <div class="student-expanded-detail">${buildActivitiesOnlyHTML(`${s.class}-${s.no}`)}</div>`;
+                card.onclick = function() {
+                    const d = this.querySelector('.student-expanded-detail');
+                    const isOpen = d.style.display === 'block';
+                    d.style.display = isOpen ? 'none' : 'block';
+                    this.querySelector('span:last-child').textContent = isOpen ? `${s.records.length} 項表演 ▾` : `${s.records.length} 項表演 ▴`;
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function resetPerformance() { document.getElementById('activity-select').value = ''; renderPerformanceStudents(); }
+        function resetStudentSearch() { document.getElementById('search-class').value = ''; document.getElementById('search-name-no').value = ''; handleStudentSearch(); }
+        function closeModal() { document.getElementById('global-modal').style.display = 'none'; }
+        window.onload = initData;
+    </script>
+</body>
+</html>
