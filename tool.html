@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表演生資料轉換器 (Excel 版)</title>
+    <!-- 引入 SheetJS 用於處理 Excel 檔案 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --bg-color: #f4f7f6;
+        }
+        body {
+            font-family: sans-serif;
+            background-color: var(--bg-color);
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { color: var(--primary); text-align: center; }
+        .instructions {
+            background: #eef7fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #34495e;
+        }
+        .upload-section {
+            border: 2px dashed var(--secondary);
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background: #fcfdfe;
+            transition: background 0.3s;
+        }
+        .upload-section:hover {
+            background: #f0f7ff;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #fileName {
+            display: block;
+            font-size: 14px;
+            color: #666;
+        }
+        textarea {
+            width: 100%;
+            height: 350px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            margin-bottom: 20px;
+            resize: vertical;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-copy { background: var(--success); color: white; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button:hover:not(:disabled) { opacity: 0.9; }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #status-msg { font-weight: bold; color: var(--success); display: none; }
+        .loading { display: none; color: var(--secondary); margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🛠 表演生資料轉換器 (Excel 直接讀取)</h1>
+        
+        <div class="instructions">
+            <strong>使用說明：</strong><br>
+            1. 直接點擊下方按鈕上傳您的 <strong>.xlsx</strong> 表演生名單檔案。<br>
+            2. 系統會讀取第一個工作表，並將資料轉換為<strong>緊湊格式（每筆資料一行）</strong>。<br>
+            3. 轉換成功後，點擊「複製程式碼」，貼回 <code>index.html</code> 即可。
+        </div>
+
+        <div class="upload-section">
+            <label for="fileInput" class="file-label">📂 選取 Excel (.xlsx) 檔案</label>
+            <input type="file" id="fileInput" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+            <span id="fileName">尚未選取檔案</span>
+            <div id="loadingMsg" class="loading">正在處理檔案，請稍候...</div>
+        </div>
+
+        <div class="output-header">
+            <h3>產出的 Script 格式：</h3>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="status-msg">已完成轉換！</span>
+                <button class="btn-copy" id="copyBtn" onclick="copyResult()" disabled style="padding: 5px 15px; font-size: 14px;">📋 複製程式碼</button>
+            </div>
+        </div>
+        <textarea id="jsonOutput" readonly placeholder="轉換後的結果將顯示在此..."></textarea>
+    </div>
+
+    <script>
+        let convertedData = "";
+
+        async function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = `已選取：${file.name}`;
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('status-msg').style.display = 'none';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                processExcelData(jsonData);
+            } catch (error) {
+                console.error(error);
+                alert("讀取檔案失敗，請確保這是正確的 Excel 檔案。");
+            } finally {
+                document.getElementById('loadingMsg').style.display = 'none';
+            }
+        }
+
+        function processExcelData(rows) {
+            if (rows.length < 2) {
+                alert("檔案中找不到足夠的數據。");
+                return;
+            }
+
+            const results = [];
+
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i];
+                if (!cols || cols.length === 0) continue;
+
+                const obj = {
+                    class: String(cols[0] || "").trim(),
+                    no: String(cols[1] || "").trim(),
+                    name: String(cols[2] || "").trim(),
+                    activity: String(cols[3] || "").trim(),
+                    order: String(cols[4] || "").trim(),
+                    room: String(cols[5] || "").trim(),
+                    costume: String(cols[6] || "").trim(),
+                    rehearsalDismissal: String(cols[7] || "").trim(),
+                    showDismissal: String(cols[8] || "").trim()
+                };
+
+                if (obj.name) {
+                    results.push(obj);
+                }
+            }
+
+            // 手動拼接字串，使每一筆資料佔用一行
+            let scriptText = "const records = [\n";
+            results.forEach((item, index) => {
+                const isLast = index === results.length - 1;
+                // 使用 JSON.stringify 將單個物件轉為字串，然後縮排
+                scriptText += "    " + JSON.stringify(item) + (isLast ? "" : ",") + "\n";
+            });
+            scriptText += "];";
+
+            convertedData = scriptText;
+            document.getElementById('jsonOutput').value = convertedData;
+            document.getElementById('copyBtn').disabled = false;
+            
+            const msg = document.getElementById('status-msg');
+            msg.textContent = `成功讀取 ${results.length} 筆資料！`;
+            msg.style.display = "inline";
+            msg.style.color = "#2c3e50";
+        }
+
+        function copyResult() {
+            const output = document.getElementById('jsonOutput');
+            if (!output.value) return;
+            
+            output.select();
+            document.execCommand('copy');
+            
+            const msg = document.getElementById('status-msg');
+            const originalText = msg.textContent;
+            msg.textContent = "✅ 已複製到剪貼簿！";
+            msg.style.color = "var(--success)";
+            
+            setTimeout(() => {
+                msg.textContent = originalText;
+                msg.style.color = "#2c3e50";
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

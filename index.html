@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表演生查詢系統</title>
+    <style>
+        /* =========================================
+           基本設定與色彩變數
+        ========================================= */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --border-color: #ddd;
+            --highlight: #e8f4f8;
+            --accent: #e67e22;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "PingFang HK", "Microsoft JhengHei", "Helvetica Neue", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+
+        /* =========================================
+           頁籤 (Tabs) 設計
+        ========================================= */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 2px solid var(--primary);
+            background-color: white;
+            color: var(--primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* =========================================
+           控制區與概覽區
+        ========================================= */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .btn-reset {
+            padding: 12px 20px;
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 節目概覽區塊 */
+        .perf-summary {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--accent);
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .perf-summary.active {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .summary-item {
+            font-size: 16px;
+        }
+
+        .summary-label {
+            font-weight: bold;
+            color: #7f8c8d;
+            margin-right: 8px;
+        }
+
+        .summary-value {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+            background: white;
+            border-radius: 8px;
+            border: 1px dashed #bdc3c7;
+        }
+
+        /* =========================================
+           佈局
+        ========================================= */
+        .perf-layout {
+            display: block; 
+            width: 100%;
+        }
+
+        .perf-container {
+            width: 100%;
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+
+        /* =========================================
+           表格設計
+        ========================================= */
+        .rwd-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            min-width: 700px; 
+        }
+
+        .rwd-table thead tr {
+            background-color: var(--primary);
+            color: white;
+            text-align: left;
+        }
+
+        .rwd-table th, .rwd-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .rwd-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .rwd-table tbody tr:hover {
+            background-color: var(--highlight);
+        }
+
+        /* 調整欄位比例 */
+        .col-class { width: 70px; }
+        .col-no { width: 60px; }
+        .col-name { width: 100px; font-weight: bold; }
+        .col-rehearsal { width: auto; min-width: 180px; }
+        .col-show { width: auto; min-width: 180px; }
+
+        /* =========================================
+           學生詳情樣式
+        ========================================= */
+        .student-header {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .activity-card {
+            background: #f9fbfb;
+            border: 1px solid #e1e8ed;
+            border-left: 4px solid var(--secondary);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .activity-title { font-weight: bold; font-size: 15px; margin-bottom: 8px; color: var(--primary); }
+        .activity-info { font-size: 14px; color: #555; margin-bottom: 4px; }
+
+        /* =========================================
+           學生搜尋結果卡片
+        ========================================= */
+        .student-result-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            cursor: pointer;
+        }
+        .student-result-info { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-weight: bold; 
+        }
+        .student-expanded-detail { 
+            display: none; 
+            margin-top: 15px; 
+            border-top: 1px dashed #ccc; 
+            padding-top: 10px; 
+        }
+
+        /* Modal (彈窗) */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { 
+            background: white; width: 100%; max-width: 600px; max-height: 85vh; 
+            border-radius: 12px; padding: 25px; position: relative; overflow-y: auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-close { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #888; }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            .rwd-table { min-width: 650px; }
+            .rwd-table th, .rwd-table td { padding: 10px 8px; font-size: 13px; }
+            .modal-content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎭 表演生查詢系統</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-performance')" id="btn-performance">依表演項目查詢</button>
+        <button class="tab-btn" onclick="switchTab('tab-student')" id="btn-student">依學生查詢</button>
+    </div>
+
+    <!-- 標籤一：依表演項目 -->
+    <div id="tab-performance" class="tab-content active">
+        <div class="controls">
+            <select id="activity-select" class="control-input" onchange="renderPerformanceStudents()">
+                <option value="">-- 請選擇表演項目 --</option>
+            </select>
+            <button class="btn-reset" onclick="resetPerformance()">重設</button>
+        </div>
+
+        <div id="perf-summary-box" class="perf-summary">
+            <div class="summary-item"><span class="summary-label">節目：</span><span class="summary-value" id="summary-name">-</span></div>
+            <div class="summary-item"><span class="summary-label">👥 表演人數：</span><span class="summary-value" id="summary-count">-</span></div>
+            <div class="summary-item"><span class="summary-label">📍 預備室：</span><span class="summary-value" id="summary-room">-</span></div>
+            <div class="summary-item"><span class="summary-label">👕 服飾：</span><span class="summary-value" id="summary-costume">-</span></div>
+        </div>
+
+        <div class="perf-layout">
+            <div class="perf-container" id="perf-list-container">
+                <div class="empty-state">請選擇上方表演項目以查看名單。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 標籤二：依學生 -->
+    <div id="tab-student" class="tab-content">
+        <div class="controls">
+            <input type="text" id="search-class" class="control-input" placeholder="班別 (如: 1A)" oninput="handleStudentSearch()">
+            <input type="text" id="search-name-no" class="control-input" placeholder="姓名或班號 (如: 陳小明 / 21)" oninput="handleStudentSearch()">
+            <button class="btn-reset" onclick="resetStudentSearch()">重設</button>
+        </div>
+        <div id="student-search-results">
+            <div class="empty-state">請輸入搜尋條件。</div>
+        </div>
+    </div>
+
+    <!-- 統一詳情彈窗 -->
+    <div id="global-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modal-detail-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // 數據模型
+        const records = [
+    {"class":"1A","no":"1","name":"陳諾鋒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1A","no":"2","name":"陳天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"3","name":"張曉晴","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1A","no":"5","name":"何曉晴","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"6","name":"何銘浚","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"7","name":"何耀忠","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"8","name":"洪恩熙","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"9","name":"林凱澄","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"10","name":"劉釗銘","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"11","name":"李晧星","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"12","name":"李心玥","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"13","name":"梁熙怡","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1A","no":"14","name":"梁芯雨","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1A","no":"15","name":"凌梓琪","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1A","no":"16","name":"文斐然","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"17","name":"蕭玥喬","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"18","name":"蘇感梧","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"20","name":"黃文遠","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"21","name":"王和志","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"22","name":"任家寶","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1A","no":"24","name":"周筱玥","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"1","name":"鄭皓謙","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"1","name":"鄭皓謙","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"2","name":"鄭芷澄","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"3","name":"招芷月","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"4","name":"蔡茜行","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"5","name":"周逸曦","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"6","name":"高嘉慧","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"7","name":"郭振鴻","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"8","name":"梁耕榜","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"9","name":"李逸航","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"10","name":"林澤凱","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"11","name":"廖潁鏇","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"12","name":"盧馨兒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"13","name":"彭康曜","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"14","name":"彭心莹","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"15","name":"鄧暋悦","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"16","name":"仝峻琦","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"17","name":"曾梓軒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"18","name":"衛天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"19","name":"王安佐","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"19","name":"王安佐","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"20","name":"魏瑋宣","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"21","name":"黃靖柔","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"22","name":"黃子城","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1B","no":"23","name":"曾雪桐","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1B","no":"24","name":"曾裕航","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"1","name":"陳浩澄","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"2","name":"陳穎泓","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"3","name":"陳睿鋒","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"4","name":"周芊羽","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"5","name":"陳顥文","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1C","no":"6","name":"程楚元","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1C","no":"7","name":"鄭芷盈","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1C","no":"8","name":"鄭詠橦","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"9","name":"崔仲言","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"10","name":"符傳漳","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"11","name":"郭智妍","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1C","no":"12","name":"黃芊潼","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"13","name":"江梓弘","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"14","name":"關天凱","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"15","name":"關瑋樂","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"16","name":"羅曦蕎","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"17","name":"李柏霖","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"18","name":"廖鉑宇","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"19","name":"林楷哲","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"20","name":"羅智恒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"21","name":"刁濼楒","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"22","name":"易祉希","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1C","no":"23","name":"余恩熙","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"2","name":"陳奕楠","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"3","name":"鄭淑婷","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"4","name":"鄭崇晞","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"5","name":"馮婉琳","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"6","name":"馮玥蕎","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1D","no":"7","name":"何詩祈","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"8","name":"關琛諾","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"9","name":"郭曜朗","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"10","name":"勞祖霖","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"11","name":"李元皓","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"12","name":"李玟澄","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"1D","no":"13","name":"連洛濤","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"14","name":"吳梓翎","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"16","name":"譚家祺","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"18","name":"黃靖喬","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"19","name":"黃頌軒","activity":"P.1一生一體藝非洲鼓","order":"8","room":"103室","costume":"非洲鼓表演服＋頭飾","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"21","name":"吳俊宇","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"22","name":"余芊言","activity":"P.1一生一體藝南拳","order":"11","room":"301室","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"23","name":"余靜潼","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"24","name":"沈洛瑩","activity":"P.1一生一體藝爵士舞","order":"10","room":"104室","costume":"爵士舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"1D","no":"25","name":"梁英倫","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"2","name":"鄭仲恩","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"2","name":"鄭仲恩","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"3","name":"張凱嵐","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"4","name":"張皓然","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"4","name":"張皓然","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"4","name":"張皓然","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"7","name":"梁載昕","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"7","name":"梁載昕","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"8","name":"李誠軒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"9","name":"連浩淳","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"9","name":"連浩淳","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"9","name":"連浩淳","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"10","name":"梁學尊","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"11","name":"梁梓煒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"11","name":"梁梓煒","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"12","name":"駱舒悠","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"12","name":"駱舒悠","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"12","name":"駱舒悠","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2A","no":"13","name":"潘冠廷","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"13","name":"潘冠廷","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"14","name":"蘇逸朗","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"14","name":"蘇逸朗","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"14","name":"蘇逸朗","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"15","name":"譚茝元","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"15","name":"譚茝元","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"16","name":"曾亦辰","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"17","name":"王俊熙","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"17","name":"王俊熙","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"18","name":"黃俊添","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"18","name":"黃俊添","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"18","name":"黃俊添","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"20","name":"叶紫童","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"20","name":"叶紫童","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"21","name":"葉珊逸","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"22","name":"容昊恩","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"22","name":"容昊恩","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"23","name":"曾温愉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"23","name":"曾温愉","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"24","name":"張智南","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2A","no":"24","name":"張智南","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"1","name":"陳虹霖","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"1","name":"陳虹霖","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"2","name":"陳梓軒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"2","name":"陳梓軒","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"2","name":"陳梓軒","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"3","name":"周傑熹","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"5","name":"黃思妍","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"6","name":"郭宇風","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"7","name":"劉思雅","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"7","name":"劉思雅","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"8","name":"劉穎宜","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"8","name":"劉穎宜","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"10","name":"李智森","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"10","name":"李智森","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"10","name":"李智森","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"11","name":"呂諾言","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"12","name":"岑柏朗","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"14","name":"譚暘熹","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2B","no":"14","name":"譚暘熹","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2B","no":"16","name":"黃俊杰","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"17","name":"黃子桓","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"17","name":"黃子桓","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"18","name":"黃子瑜","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"18","name":"黃子瑜","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"19","name":"余嘉樂","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"19","name":"余嘉樂","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2B","no":"21","name":"戴衍恒","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"1","name":"歐雯淇","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"2","name":"陳泳楠","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"2","name":"陳泳楠","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"3","name":"周筱柔","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"3","name":"周筱柔","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"3","name":"周筱柔","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"4","name":"刁靖攸","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"4","name":"刁靖攸","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"4","name":"刁靖攸","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"5","name":"何宇恒","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"6","name":"柯政言","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"7","name":"賴淳濱","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"8","name":"林傲相","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"9","name":"劉焯楠","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"9","name":"劉焯楠","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"10","name":"李可澄","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"10","name":"李可澄","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2C","no":"11","name":"李芷潼","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"11","name":"李芷潼","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"11","name":"李芷潼","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"12","name":"梁樂羲","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"13","name":"倫柏浩","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"14","name":"梅峻飛","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"14","name":"梅峻飛","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"14","name":"梅峻飛","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"15","name":"丘貝儿","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"15","name":"丘貝儿","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"16","name":"沈昊宇","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"17","name":"蕭佑天","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"17","name":"蕭佑天","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"18","name":"黃樂賢","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"18","name":"黃樂賢","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2C","no":"19","name":"楊尚恒","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"1","name":"陳翊鑫","activity":"P.2一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"2","name":"陳天陽","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"3","name":"蔡昀晁","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"3","name":"蔡昀晁","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"4","name":"黃俊澔","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"5","name":"郭沛嘉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"5","name":"郭沛嘉","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"6","name":"林芷翎","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"6","name":"林芷翎","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"6","name":"林芷翎","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"7","name":"林若愚","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"8","name":"林宇航","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"9","name":"馬智暉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"9","name":"馬智暉","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"11","name":"吳煜曦","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"11","name":"吳煜曦","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"12","name":"倪樂霖","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"12","name":"倪樂霖","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"13","name":"蕭榮德","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"13","name":"蕭榮德","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"14","name":"鄧英碩","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"14","name":"鄧英碩","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"15","name":"曾日禧","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"15","name":"曾日禧","activity":"P.2一生一體藝舞台魔術","order":"4","room":"202室","costume":"魔術表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"15","name":"曾日禧","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"16","name":"黃曦敏","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"16","name":"黃曦敏","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"17","name":"黃家浚","activity":"P.2一生一體藝Hip Hop","order":"6","room":"204/206室","costume":"Hip Hop表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"2D","no":"18","name":"王濼游","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"18","name":"王濼游","activity":"P.2一生一體藝啦啦隊","order":"2","room":"204/206室","costume":"啦啦隊表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"2D","no":"19","name":"袁綽賢","activity":"P.2一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"1","name":"陳凡語","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"1","name":"陳凡語","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"2","name":"陳穎悕","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"2","name":"陳穎悕","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"2","name":"陳穎悕","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"3","name":"鄧梓聖","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"4","name":"關博韜","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"6","name":"黃澤霆","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"7","name":"黃蕎恩","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"8","name":"賴培植","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"9","name":"梁芷淳","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"9","name":"梁芷淳","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"9","name":"梁芷淳","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"10","name":"李嘉朗","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"11","name":"李榕","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"12","name":"李遠航","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"12","name":"李遠航","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"13","name":"梁睿烨","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"13","name":"梁睿烨","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"13","name":"梁睿烨","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"14","name":"巫昊謙","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"14","name":"巫昊謙","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"15","name":"成功","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"","showDismissal":""},
+    {"class":"3A","no":"15","name":"成功","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"15","name":"成功","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"16","name":"彭康宇","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"16","name":"彭康宇","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"17","name":"潘俊麟","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"18","name":"鄧智業","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"19","name":"謝卓恆","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3A","no":"20","name":"黃信宇","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"20","name":"黃信宇","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"21","name":"吳澤浠","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"21","name":"吳澤浠","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"22","name":"吳俊樂","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"22","name":"吳俊樂","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"22","name":"吳俊樂","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3A","no":"23","name":"楊家怡","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3A","no":"25","name":"楊子興","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"25","name":"楊子興","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"25","name":"楊子興","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"26","name":"曾雍馥","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"26","name":"曾雍馥","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"26","name":"曾雍馥","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3A","no":"27","name":"周奕宇","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"1","name":"陳哲朗","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3B","no":"2","name":"陳立燁","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3B","no":"3","name":"陳樂希","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"3","name":"陳樂希","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"4","name":"張晉霖","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"4","name":"張晉霖","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"5","name":"張敏晶","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"6","name":"章惠琪","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"6","name":"章惠琪","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"8","name":"范逸峯","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3B","no":"8","name":"范逸峯","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3B","no":"9","name":"黎皓軒","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"9","name":"黎皓軒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"9","name":"黎皓軒","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"10","name":"黎梓晴","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"10","name":"黎梓晴","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"11","name":"李欣桐","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3B","no":"12","name":"倫凱欣","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"13","name":"羅智永","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"13","name":"羅智永","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"15","name":"吳嘉謙","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"15","name":"吳嘉謙","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"16","name":"吳思翰","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3B","no":"16","name":"吳思翰","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3B","no":"16","name":"吳思翰","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3B","no":"17","name":"吳禹霆","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"17","name":"吳禹霆","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"17","name":"吳禹霆","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"18","name":"司徒汶晞","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"18","name":"司徒汶晞","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"20","name":"譚家豪","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"21","name":"衛天賜","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"22","name":"黃金泉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3B","no":"23","name":"黃紫嫣","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"23","name":"黃紫嫣","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3B","no":"24","name":"楊凱澄","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"1","name":"陳博靖","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"1","name":"陳博靖","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"2","name":"陳泰羽","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"3","name":"程芷妍","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"4","name":"蔡欣恒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"4","name":"蔡欣恒","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"8","name":"郭洛睿","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"8","name":"郭洺睿","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"9","name":"郭芯妤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"9","name":"郭芯妤","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"9","name":"郭芯妤","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"11","name":"李洺圻","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"14","name":"李研湘","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"14","name":"李研湘","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"14","name":"李研湘","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"15","name":"李峻林","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"15","name":"李峻林","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"16","name":"梁祐瑋","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"16","name":"梁祐瑋","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"16","name":"梁祐瑋","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"18","name":"馬芷希","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"19","name":"吳芊凝","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"19","name":"吳芊凝","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"19","name":"吳芊凝","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"20","name":"蒲梓菡","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3C","no":"21","name":"曾詡博","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"21","name":"曾詡博","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"22","name":"崔日星","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"22","name":"崔日星","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3C","no":"23","name":"温汭錡","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"23","name":"温汭錡","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3C","no":"24","name":"黃熙晴","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"1","name":"陳梓琦","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3D","no":"4","name":"鄺祺添","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"5","name":"鄺雯茵","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"5","name":"鄺雯茵","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"5","name":"鄺雯茵","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"6","name":"林愷晉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"8","name":"劉賜希","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"9","name":"李峻源","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"10","name":"梁靖瑤","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"10","name":"梁靖瑤","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"11","name":"梁玥悠","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"12","name":"李綺雯","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"12","name":"李綺雯","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"13","name":"雷淳羲","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"14","name":"吳雨嫣","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"14","name":"吳雨嫣","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"14","name":"吳雨嫣","activity":"英語獨誦","order":"9","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"14","name":"吳雨嫣","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"15","name":"彭星澔","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"16","name":"石芯悦","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"16","name":"石芯悦","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"16","name":"石芯悦","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"19","name":"謝希文","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"3D","no":"20","name":"蔡柏鉉","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"20","name":"蔡柏鉉","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"20","name":"蔡柏鉉","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"20","name":"蔡柏鉉","activity":"英語集誦","order":"3","room":"203室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"20","name":"蔡柏鉉","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"22","name":"黃俊希","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"3D","no":"24","name":"黃子軒","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3D","no":"24","name":"黃子軒","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"3D","no":"25","name":"俞嘉睿","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"25","name":"俞嘉睿","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"3D","no":"26","name":"陳梓豪","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4A","no":"1","name":"陳俊燁","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"2","name":"陳芷穎","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4A","no":"3","name":"陳祉瑩","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"4","name":"周泓瀚","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"5","name":"陳嘉茵","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"5","name":"陳嘉茵","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"7","name":"周子皓","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4A","no":"7","name":"周子皓","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4A","no":"8","name":"鍾筱怡","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"8","name":"鍾筱怡","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"8","name":"鍾筱怡","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"11","name":"羅星堯","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"12","name":"李瀚鋒","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"12","name":"李瀚鋒","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"13","name":"李穎琳","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"13","name":"李穎琳","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"18","name":"顏言己","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"18","name":"顏言己","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"19","name":"蕭凱澄","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"19","name":"蕭凱澄","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"20","name":"蕭詠潼","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"20","name":"蕭詠潼","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4A","no":"21","name":"蘇逸軒","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"23","name":"刁濼澄","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4A","no":"24","name":"黃藝之","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"24","name":"黃藝之","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4A","no":"25","name":"黃栢晞","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"1","name":"陳斈澧","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4B","no":"4","name":"周美伽","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"5","name":"張凱嵐","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"5","name":"張凱嵐","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"7","name":"馮玥綾","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"7","name":"馮玥綾","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"8","name":"洪靖嵐","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"9","name":"簡綽伶","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"11","name":"林煜祥","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"12","name":"李嘉錤","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"12","name":"李嘉錤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"13","name":"李佩霖","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"13","name":"李佩霖","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"13","name":"李佩霖","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"14","name":"梁沛瑤","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4B","no":"14","name":"梁沛瑤","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4B","no":"14","name":"梁沛瑤","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4B","no":"15","name":"梁茵桐","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"15","name":"梁茵桐","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"15","name":"梁茵桐","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"16","name":"李智彬","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"16","name":"李智彬","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"19","name":"麥芮浠","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"22","name":"沈洛言","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"23","name":"孫嘉禧","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4B","no":"24","name":"王晉","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4B","no":"25","name":"王筱玥","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"25","name":"王筱玥","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4B","no":"28","name":"楊晞琳","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4C","no":"3","name":"張忠俊","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4C","no":"3","name":"張忠俊","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4C","no":"5","name":"招穎軒","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4C","no":"7","name":"方鈞睎","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"7","name":"方鈞睎","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"10","name":"簡綽殷","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"10","name":"簡綽殷","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"11","name":"劉凱琳","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4C","no":"11","name":"劉凱琳","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4C","no":"12","name":"劉心語","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"12","name":"劉心語","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"13","name":"李晞琳","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"13","name":"李晞琳","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4C","no":"18","name":"曾若晞","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4C","no":"20","name":"王嘉豪","activity":"銅管樂 - 合奏","order":"18","room":"302-304/404室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4C","no":"20","name":"王嘉豪","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"4C","no":"21","name":"黃月曦","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4C","no":"21","name":"黃月曦","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4C","no":"22","name":"胡曉琳","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"4","name":"卓凱晉","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"4","name":"卓凱晉","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"5","name":"張梓馨","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4D","no":"6","name":"方佩盈","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"6","name":"方佩盈","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"7","name":"何梓悠","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4D","no":"7","name":"何梓悠","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4D","no":"10","name":"關心穎","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"10","name":"關心穎","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"10","name":"關心穎","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"11","name":"林穎謙","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"13","name":"梁晞蕾","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"13","name":"梁晞蕾","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"14","name":"梁早苗","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"4D","no":"17","name":"廖美霖","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"18","name":"吳奕勤","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4D","no":"18","name":"吳奕勤","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4D","no":"19","name":"戴彥樂","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"4D","no":"20","name":"衛施貝","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"20","name":"衛施貝","activity":"普通話集誦","order":"7","room":"403室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"4D","no":"22","name":"葉俊城","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5A","no":"1","name":"畢芊悦","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"1","name":"畢芊悦","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"3","name":"陳樂僖","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"7","name":"許善喬","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"9","name":"林樂彤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"9","name":"林樂彤","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"14","name":"李讓誠","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"15","name":"林善恩","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"18","name":"石希雅","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"19","name":"沈新浟","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"21","name":"謝允哲","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5A","no":"21","name":"謝允哲","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5A","no":"23","name":"董芯賢","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"23","name":"董芯賢","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"24","name":"汪芊妤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"25","name":"王志銘","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5A","no":"25","name":"王志銘","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5A","no":"25","name":"王志銘","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5A","no":"26","name":"吳貝妍","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"26","name":"吳貝妍","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"26","name":"吳貝妍","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5A","no":"27","name":"姚凱嵐","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5B","no":"3","name":"陳蔚晴","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5B","no":"4","name":"陳禧","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5B","no":"5","name":"陳語晨","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5B","no":"5","name":"陳語晨","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5B","no":"6","name":"章政祖","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5B","no":"9","name":"范曉琳","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
+    {"class":"5B","no":"10","name":"龔鈺淇","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"10","name":"龔鈺淇","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"10","name":"龔鈺淇","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"11","name":"許皓鋒","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5B","no":"12","name":"許潔渝","activity":"粵劇","order":"19","room":"102室","costume":"粵劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"12","name":"許潔渝","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"12","name":"許潔渝","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"13","name":"江倩頤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"13","name":"江玥頤","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"25","name":"王芷萱","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"27","name":"袁寶妤","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5B","no":"28","name":"張駿澤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"6","name":"郭熙琳","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5C","no":"6","name":"郭熙琳","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5C","no":"7","name":"郭熙婷","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5C","no":"7","name":"郭熙婷","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5C","no":"8","name":"林毅媛","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"10","name":"李俊基","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"15","name":"盧綺霖","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"16","name":"莫紫希","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"17","name":"吳鎧雯","activity":"歌詠","order":"20","room":"306室","costume":"歌詠表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"21","name":"黃浩宇","activity":"南拳校隊","order":"11","room":"301室","costume":"表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5C","no":"22","name":"黃司雅","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5C","no":"24","name":"許凱貽","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"1","name":"陳德和","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"3","name":"張文康","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"5D","no":"10","name":"甘梓澄","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"11","name":"林泳希","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"14","name":"李明意","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"15","name":"李泳怡","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"16","name":"林梓琪","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"19","name":"譚永豪","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"5D","no":"21","name":"蕭天驊","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5D","no":"23","name":"楊善雯","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"5D","no":"23","name":"楊善雯","activity":"手鐘隊","order":"12","room":"312室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"6A","no":"2","name":"陳樂樂","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"4","name":"張可琳","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"11","name":"江倩頤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"13","name":"羅思涵","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"18","name":"李穎芝","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"19","name":"陸宬竹","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"20","name":"陸加穎","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"21","name":"陸紫瑤","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"6A","no":"23","name":"吳思妤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"6A","no":"24","name":"蕭傲縈","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"6A","no":"25","name":"鄧熹晴","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"28","name":"王愛心","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"28","name":"王愛心","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"30","name":"王藝程","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6A","no":"31","name":"黃煒駿","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"1","name":"陳欣錡","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"6B","no":"2","name":"陳麗琪","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"6","name":"周芷彤","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"6B","no":"7","name":"周梓泓","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"17","name":"李凱琳","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"18","name":"李穎欣","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"乘搭校車","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"20","name":"梁諾韻","activity":"花式跳繩校隊","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"6B","no":"22","name":"盧嘉旋","activity":"霹靂舞精英班","order":"14","room":"110室","costume":"霹靂舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"22","name":"盧嘉旋","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"25","name":"石栢昊","activity":"英語話劇","order":"15","room":"201室","costume":"英語話劇表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6B","no":"27","name":"鄧樂謙","activity":"木笛隊","order":"17","room":"503室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6C","no":"3","name":"陳泳君","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6C","no":"5","name":"張嘉浚","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6C","no":"12","name":"劉昊駿","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"家長接送"},
+    {"class":"6C","no":"23","name":"尹雍舜","activity":"週六跆拳道","order":"16","room":"101室/一樓活動區","costume":"跆拳道服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6C","no":"28","name":"袁穎彤","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6D","no":"3","name":"陳奕欣","activity":"拉丁舞","order":"22","room":"504室","costume":"拉丁舞表演服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
+    {"class":"6D","no":"5","name":"何凱澄","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6D","no":"11","name":"李泓毅","activity":"手鈴隊","order":"13","room":"309室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6D","no":"21","name":"黃家瀅","activity":"合唱團","order":"5","room":"310室","costume":"校服＋手套","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"},
+    {"class":"6D","no":"21","name":"黃家瀅","activity":"節奏樂","order":"1","room":"311室","costume":"校服","rehearsalDismissal":"自行回家(小三至小六)","showDismissal":"自行回家(小三至小六)"}
+];
+
+        const byPerformance = {};
+        const byStudent = {};
+        const uniquePerformances = [];
+
+        function initData() {
+            records.forEach(rec => {
+                const perfKey = `${rec.order}|${rec.activity}`;
+                if (!byPerformance[perfKey]) {
+                    byPerformance[perfKey] = [];
+                    uniquePerformances.push({ key: perfKey, order: rec.order, name: rec.activity, room: rec.room, costume: rec.costume });
+                }
+                byPerformance[perfKey].push(rec);
+
+                const studentKey = `${rec.class}-${rec.no}`;
+                if (!byStudent[studentKey]) {
+                    byStudent[studentKey] = { class: rec.class, no: rec.no, name: rec.name, records: [] };
+                }
+                byStudent[studentKey].records.push(rec);
+            });
+
+            uniquePerformances.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            const select = document.getElementById('activity-select');
+            uniquePerformances.forEach(perf => {
+                const opt = document.createElement('option');
+                opt.value = perf.key;
+                opt.textContent = `[${perf.order}] ${perf.name}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById(id === 'tab-performance' ? 'btn-performance' : 'btn-student').classList.add('active');
+        }
+
+        // 建立詳細表演列表 HTML (不含學生基本資料頭)
+        function buildActivitiesOnlyHTML(studentKey) {
+            const student = byStudent[studentKey];
+            if (!student) return '';
+            let html = '';
+            student.records.forEach(rec => {
+                html += `
+                <div class="activity-card">
+                    <div class="activity-title">節目 ${rec.order}: ${rec.activity}</div>
+                    <div class="activity-info">📍 預備室: ${rec.room}</div>
+                    <div class="activity-info">👕 服飾: ${rec.costume}</div>
+                    <div class="activity-info">📅 綵排放學: ${rec.rehearsalDismissal}</div>
+                    <div class="activity-info">🎬 表演放學: ${rec.showDismissal}</div>
+                </div>`;
+            });
+            return html;
+        }
+
+        // 建立完整詳情 HTML (含學生頭)
+        function buildFullDetailHTML(studentKey) {
+            const student = byStudent[studentKey];
+            if (!student) return '';
+            return `<div class="student-header">${student.class} (${student.no}) ${student.name}</div>` + buildActivitiesOnlyHTML(studentKey);
+        }
+
+        function renderPerformanceStudents() {
+            const key = document.getElementById('activity-select').value;
+            const listContainer = document.getElementById('perf-list-container');
+            const summaryBox = document.getElementById('perf-summary-box');
+            
+            if (!key) {
+                summaryBox.classList.remove('active');
+                listContainer.innerHTML = '<div class="empty-state">請選擇上方表演項目以查看名單。</div>';
+                return;
+            }
+
+            const students = byPerformance[key];
+            const info = uniquePerformances.find(p => p.key === key);
+
+            // 更新概覽資訊與人數
+            document.getElementById('summary-name').textContent = info.name;
+            document.getElementById('summary-count').textContent = `${students.length} 人`;
+            document.getElementById('summary-room').textContent = info.room;
+            document.getElementById('summary-costume').textContent = info.costume;
+            summaryBox.classList.add('active');
+
+            let html = `
+            <table class="rwd-table">
+                <thead>
+                    <tr>
+                        <th class="col-class">班別</th>
+                        <th class="col-no">班號</th>
+                        <th class="col-name">姓名</th>
+                        <th class="col-rehearsal">綵排放學安排</th>
+                        <th class="col-show">表演放學安排</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            students.forEach(s => {
+                const sk = `${s.class}-${s.no}`;
+                html += `
+                <tr onclick="showStudentModal('${sk}')">
+                    <td>${s.class}</td>
+                    <td>${s.no}</td>
+                    <td>${s.name}</td>
+                    <td>${s.rehearsalDismissal}</td>
+                    <td>${s.showDismissal}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            listContainer.innerHTML = html;
+        }
+
+        function showStudentModal(key) {
+            const html = buildFullDetailHTML(key);
+            document.getElementById('modal-detail-container').innerHTML = html;
+            document.getElementById('global-modal').style.display = 'flex';
+        }
+
+        function handleStudentSearch() {
+            const qC = document.getElementById('search-class').value.toLowerCase().trim();
+            const qN = document.getElementById('search-name-no').value.toLowerCase().trim();
+            const container = document.getElementById('student-search-results');
+            
+            if (!qC && !qN) {
+                container.innerHTML = '<div class="empty-state">請輸入搜尋條件。</div>';
+                return;
+            }
+
+            const filtered = Object.values(byStudent).filter(s => {
+                const matchC = qC ? s.class.toLowerCase().includes(qC) : true;
+                const matchN = qN ? (s.name.includes(qN) || s.no === qN) : true;
+                return matchC && matchN;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state">找不到學生。</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'student-result-card';
+                card.innerHTML = `
+                    <div class="student-result-info">
+                        <span>${s.class} (${s.no}) ${s.name}</span>
+                        <span style="color:var(--secondary)">${s.records.length} 項表演 ▾</span>
+                    </div>
+                    <div class="student-expanded-detail">${buildActivitiesOnlyHTML(`${s.class}-${s.no}`)}</div>`;
+                card.onclick = function() {
+                    const d = this.querySelector('.student-expanded-detail');
+                    const isOpen = d.style.display === 'block';
+                    d.style.display = isOpen ? 'none' : 'block';
+                    this.querySelector('span:last-child').textContent = isOpen ? `${s.records.length} 項表演 ▾` : `${s.records.length} 項表演 ▴`;
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function resetPerformance() { document.getElementById('activity-select').value = ''; renderPerformanceStudents(); }
+        function resetStudentSearch() { document.getElementById('search-class').value = ''; document.getElementById('search-name-no').value = ''; handleStudentSearch(); }
+        function closeModal() { document.getElementById('global-modal').style.display = 'none'; }
+        window.onload = initData;
+    </script>
+</body>
+</html>
