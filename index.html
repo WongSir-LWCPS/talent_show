@@ -325,8 +325,8 @@
     </div>
 
     <script>
-        // 數據模型
-        const records = [
+        // 數據模型 (此處資料可由轉換工具生成的內容替換)
+       const records = [
     {"class":"1A","no":"1","name":"陳諾鋒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
     {"class":"1A","no":"2","name":"陳天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
     {"class":"1A","no":"3","name":"張曉晴","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
@@ -899,6 +899,7 @@
 
         function initData() {
             records.forEach(rec => {
+                // 處理表演項目分類
                 const perfKey = `${rec.order}|${rec.activity}`;
                 if (!byPerformance[perfKey]) {
                     byPerformance[perfKey] = [];
@@ -906,6 +907,7 @@
                 }
                 byPerformance[perfKey].push(rec);
 
+                // 處理學生個人分類
                 const studentKey = `${rec.class}-${rec.no}`;
                 if (!byStudent[studentKey]) {
                     byStudent[studentKey] = { class: rec.class, no: rec.no, name: rec.name, records: [] };
@@ -913,6 +915,12 @@
                 byStudent[studentKey].records.push(rec);
             });
 
+            // 為每個學生的表演項目按「表演次序 (order)」進行排序
+            Object.values(byStudent).forEach(student => {
+                student.records.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            });
+
+            // 為表演選擇清單按「表演次序 (order)」排序
             uniquePerformances.sort((a, b) => parseInt(a.order) - parseInt(b.order));
             const select = document.getElementById('activity-select');
             uniquePerformances.forEach(perf => {
@@ -929,7 +937,7 @@
             document.getElementById(id === 'tab-performance' ? 'btn-performance' : 'btn-student').classList.add('active');
         }
 
-        // 建立詳細表演列表 HTML (不含學生基本資料頭)
+        // 建立詳細表演列表 HTML
         function buildActivitiesOnlyHTML(studentKey) {
             const student = byStudent[studentKey];
             if (!student) return '';
@@ -947,7 +955,7 @@
             return html;
         }
 
-        // 建立完整詳情 HTML (含學生頭)
+        // 建立完整詳情 HTML
         function buildFullDetailHTML(studentKey) {
             const student = byStudent[studentKey];
             if (!student) return '';
@@ -968,7 +976,6 @@
             const students = byPerformance[key];
             const info = uniquePerformances.find(p => p.key === key);
 
-            // 更新概覽資訊與人數
             document.getElementById('summary-name').textContent = info.name;
             document.getElementById('summary-count').textContent = `${students.length} 人`;
             document.getElementById('summary-room').textContent = info.room;
