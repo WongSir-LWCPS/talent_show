@@ -16,6 +16,7 @@
             --border-color: #ddd;
             --highlight: #e8f4f8;
             --accent: #e67e22;
+            --next-item-color: #e67e22;
         }
 
         * {
@@ -171,7 +172,7 @@
             border-radius: 8px;
             border-collapse: collapse;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            min-width: 700px; 
+            min-width: 850px; 
         }
 
         .rwd-table thead tr {
@@ -196,12 +197,21 @@
             background-color: var(--highlight);
         }
 
+        .next-perf-text {
+            color: var(--next-item-color);
+            font-size: 12px;
+            font-weight: bold;
+            display: block;
+            margin-top: 4px;
+        }
+
         /* 調整欄位比例 */
         .col-class { width: 70px; }
         .col-no { width: 60px; }
-        .col-name { width: 100px; font-weight: bold; }
-        .col-rehearsal { width: auto; min-width: 180px; }
-        .col-show { width: auto; min-width: 180px; }
+        .col-name { width: 120px; font-weight: bold; }
+        .col-rehearsal { width: auto; min-width: 160px; }
+        .col-show { width: auto; min-width: 160px; }
+        .col-next { width: auto; min-width: 200px; }
 
         /* =========================================
            學生詳情樣式
@@ -266,7 +276,7 @@
 
         /* RWD 調整 */
         @media (max-width: 768px) {
-            .rwd-table { min-width: 650px; }
+            .rwd-table { min-width: 750px; }
             .rwd-table th, .rwd-table td { padding: 10px 8px; font-size: 13px; }
             .modal-content { padding: 20px; }
         }
@@ -325,8 +335,8 @@
     </div>
 
     <script>
-        // 數據模型 (此處資料可由轉換工具生成的內容替換)
-       const records = [
+        // 數據模型
+        const records = [
     {"class":"1A","no":"1","name":"陳諾鋒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
     {"class":"1A","no":"2","name":"陳天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
     {"class":"1A","no":"3","name":"張曉晴","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
@@ -899,7 +909,6 @@
 
         function initData() {
             records.forEach(rec => {
-                // 處理表演項目分類
                 const perfKey = `${rec.order}|${rec.activity}`;
                 if (!byPerformance[perfKey]) {
                     byPerformance[perfKey] = [];
@@ -907,7 +916,6 @@
                 }
                 byPerformance[perfKey].push(rec);
 
-                // 處理學生個人分類
                 const studentKey = `${rec.class}-${rec.no}`;
                 if (!byStudent[studentKey]) {
                     byStudent[studentKey] = { class: rec.class, no: rec.no, name: rec.name, records: [] };
@@ -915,12 +923,12 @@
                 byStudent[studentKey].records.push(rec);
             });
 
-            // 為每個學生的表演項目按「表演次序 (order)」進行排序
+            // 學生紀錄按次序排序
             Object.values(byStudent).forEach(student => {
                 student.records.sort((a, b) => parseInt(a.order) - parseInt(b.order));
             });
 
-            // 為表演選擇清單按「表演次序 (order)」排序
+            // 項目清單按次序排序
             uniquePerformances.sort((a, b) => parseInt(a.order) - parseInt(b.order));
             const select = document.getElementById('activity-select');
             uniquePerformances.forEach(perf => {
@@ -937,7 +945,6 @@
             document.getElementById(id === 'tab-performance' ? 'btn-performance' : 'btn-student').classList.add('active');
         }
 
-        // 建立詳細表演列表 HTML
         function buildActivitiesOnlyHTML(studentKey) {
             const student = byStudent[studentKey];
             if (!student) return '';
@@ -955,7 +962,6 @@
             return html;
         }
 
-        // 建立完整詳情 HTML
         function buildFullDetailHTML(studentKey) {
             const student = byStudent[studentKey];
             if (!student) return '';
@@ -975,6 +981,7 @@
 
             const students = byPerformance[key];
             const info = uniquePerformances.find(p => p.key === key);
+            const currentOrder = parseInt(info.order);
 
             document.getElementById('summary-name').textContent = info.name;
             document.getElementById('summary-count').textContent = `${students.length} 人`;
@@ -989,19 +996,32 @@
                         <th class="col-class">班別</th>
                         <th class="col-no">班號</th>
                         <th class="col-name">姓名</th>
-                        <th class="col-rehearsal">綵排放學安排</th>
-                        <th class="col-show">表演放學安排</th>
+                        <th class="col-next">下一個表演</th>
+                        <th class="col-rehearsal">綵排放學</th>
+                        <th class="col-show">表演放學</th>
                     </tr>
                 </thead>
                 <tbody>`;
             
             students.forEach(s => {
                 const sk = `${s.class}-${s.no}`;
+                const studentData = byStudent[sk];
+                
+                // 尋找下一個表演項目
+                let nextPerfText = "---";
+                if (studentData) {
+                    const nextPerf = studentData.records.find(r => parseInt(r.order) > currentOrder);
+                    if (nextPerf) {
+                        nextPerfText = `<span class="next-perf-text">節目 ${nextPerf.order}: ${nextPerf.activity}</span>`;
+                    }
+                }
+
                 html += `
                 <tr onclick="showStudentModal('${sk}')">
                     <td>${s.class}</td>
                     <td>${s.no}</td>
                     <td>${s.name}</td>
+                    <td>${nextPerfText}</td>
                     <td>${s.rehearsalDismissal}</td>
                     <td>${s.showDismissal}</td>
                 </tr>`;
