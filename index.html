@@ -17,7 +17,6 @@
             --highlight: #e8f4f8;
             --accent: #e67e22;
             --next-item-color: #d35400; /* 深橘色用於強調 */
-            --multi-perf-bg: #fff9e6; /* 淺橘黃色底，提醒多項表演 */
         }
 
         * {
@@ -190,21 +189,11 @@
             background-color: var(--highlight);
         }
 
-        /* 多項表演者的高亮行 */
-        .row-multi-perf {
-            background-color: var(--multi-perf-bg) !important;
-        }
-
-        /* 多項標籤 */
-        .multi-tag {
-            display: inline-block;
-            background-color: var(--accent);
-            color: white;
-            font-size: 11px;
-            padding: 1px 6px;
-            border-radius: 4px;
-            margin-left: 6px;
-            font-weight: normal;
+        /* 多項表演者的標記符號樣式 */
+        .multi-indicator {
+            color: var(--accent);
+            font-weight: bold;
+            margin-left: 4px;
         }
 
         .next-perf-text {
@@ -910,6 +899,7 @@
     {"class":"2C","no":"23","name":"周筱柔","activity":"小司儀","order":"","room":"圖書館/後台","costume":"自定服飾＋小司儀眼鏡","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
     {"class":"2D","no":"15","name":"曾日禧","activity":"小司儀","order":"","room":"圖書館/後台","costume":"自定服飾＋小司儀眼鏡","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"}
 ];
+
         const byPerformance = {};
         const byStudent = {};
         const uniquePerformances = [];
@@ -989,11 +979,10 @@
                 const sk = `${s.class}-${s.no}`;
                 const studentData = byStudent[sk];
                 
-                // 檢查是否有多項表演
+                // 檢查是否有多項表演，簡單標記星號 (*)
                 const totalPerfs = studentData ? studentData.records.length : 1;
                 const isMulti = totalPerfs > 1;
-                const rowClass = isMulti ? 'class="row-multi-perf"' : '';
-                const multiBadge = isMulti ? `<span class="multi-tag">共 ${totalPerfs} 項</span>` : '';
+                const multiMarker = isMulti ? `<span class="multi-indicator">*</span>` : '';
 
                 // 尋找下一個表演
                 let nextPerfText = "---";
@@ -1005,10 +994,10 @@
                 }
 
                 html += `
-                <tr ${rowClass} onclick="showStudentModal('${sk}')">
+                <tr onclick="showStudentModal('${sk}')">
                     <td>${s.class}</td>
                     <td>${s.no}</td>
-                    <td>${s.name}${multiBadge}</td>
+                    <td>${s.name}${multiMarker}</td>
                     <td>${nextPerfText}</td>
                     <td>${s.rehearsalDismissal}</td>
                     <td>${s.showDismissal}</td>
