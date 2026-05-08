@@ -207,7 +207,7 @@
         /* 欄位寬度微調 */
         .col-class { width: 70px; }
         .col-no { width: 60px; }
-        .col-name { width: 100px; font-weight: bold; } /* 姓名欄寬度已縮減 */
+        .col-name { width: 100px; font-weight: bold; } 
         .col-next { width: auto; min-width: 200px; }
         .col-rehearsal { width: auto; min-width: 150px; }
         .col-show { width: auto; min-width: 150px; }
@@ -322,7 +322,7 @@
     </div>
 
     <script>
-        // 模擬數據 (此處可替換為轉換工具生成的 records)
+        // 模擬數據 (支援小數點編號，例如 1.1, 1.2)
         const records = [
     {"class":"1A","no":"1","name":"陳諾鋒","activity":"P.1一生一體藝花式跳繩","order":"21","room":"101室/一樓活動區","costume":"體育服","rehearsalDismissal":"乘搭校車","showDismissal":"家長接送"},
     {"class":"1A","no":"2","name":"陳天樂","activity":"P.1一生一體藝跆拳道","order":"16","room":"501室/五樓平台","costume":"體育服","rehearsalDismissal":"家長接送","showDismissal":"家長接送"},
@@ -921,11 +921,14 @@
                 byStudent[studentKey].records.push(rec);
             });
 
+            // 使用 parseFloat 進行小數點排序
             Object.values(byStudent).forEach(student => {
-                student.records.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+                student.records.sort((a, b) => parseFloat(a.order) - parseFloat(b.order));
             });
 
-            uniquePerformances.sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            // 使用 parseFloat 進行節目清單排序
+            uniquePerformances.sort((a, b) => parseFloat(a.order) - parseFloat(b.order));
+            
             const select = document.getElementById('activity-select');
             uniquePerformances.forEach(perf => {
                 const opt = document.createElement('option');
@@ -954,7 +957,7 @@
 
             const students = byPerformance[key];
             const info = uniquePerformances.find(p => p.key === key);
-            const currentOrder = parseInt(info.order);
+            const currentOrder = parseFloat(info.order);
 
             document.getElementById('summary-name').textContent = info.name;
             document.getElementById('summary-count').textContent = `${students.length} 人`;
@@ -980,15 +983,13 @@
                 const sk = `${s.class}-${s.no}`;
                 const studentData = byStudent[sk];
                 
-                // 檢查是否有多項表演，簡單標記星號 (*)
                 const totalPerfs = studentData ? studentData.records.length : 1;
                 const isMulti = totalPerfs > 1;
                 const multiMarker = isMulti ? `<span class="multi-indicator">*</span>` : '';
 
-                // 尋找下一個表演
                 let nextPerfText = "---";
                 if (studentData) {
-                    const nextPerf = studentData.records.find(r => parseInt(r.order) > currentOrder);
+                    const nextPerf = studentData.records.find(r => parseFloat(r.order) > currentOrder);
                     if (nextPerf) {
                         nextPerfText = `<span class="next-perf-text">節目 ${nextPerf.order}: ${nextPerf.activity}</span>`;
                     }
